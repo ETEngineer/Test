@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZonedDateTime vs Calendar DST Plot</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    canvas {
+      width: 90%;
+      max-width: 1100px;
+      height: 500px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Calendar vs ZonedDateTime (Canada/Central) DST Visualization</h2>
+  <input type="file" id="fileInput" accept=".txt" />
+  <canvas id="timeChart"></canvas>
+
+  <script>
+    const ctx = document.getElementById('timeChart').getContext('2d');
+    let chart;
+
+    document.getElementById('fileInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const lines = reader.result.trim().split('\n');
+        const labels = [];
+        const calendar = [];
+        const zoned = [];
+        const central = [];
+
+        lines.forEach(line => {
+          const [cal, zon, can] = line.split(',');
+          // convert to timestamp numbers for y-axis comparison
+          const calDate = new Date(cal);
+          const zonDate = new Date(zon);
+          const canDate = new Date(can);
+
+          labels.push(calDate.toLocaleString());
+          calendar.push(calDate.getTime() / 3600000); // hours since epoch
+          zoned.push(zonDate.getTime() / 3600000);
+          central.push(canDate.getTime() / 3600000);
+        });
+
+        // destroy previous chart if exists
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Calendar Time',
+                data: calendar,
+                borderColor: 'rgba(255,99,132,1)',
+                borderWidth: 2,
+                tension: 0.2
+              },
+              {
+                label: 'ZonedDateTime',
+                data: zoned,
+                borderColor: 'rgba(54,162,235,1)',
+                borderWidth: 2,
+                tension: 0.2
+              },
+              {
+                label: 'Canada/Central Converted',
+                data: central,
+                borderColor: 'rgba(75,192,192,1)',
+                borderWidth: 2,
+                tension: 0.2
+              }
+            ]
+          },
+          options: {
+            scales: {
+              x: {
+                title: { display: true, text: 'Timeline (Calendar Time)' },
+                ticks: { autoSkip: true, maxTicksLimit: 15 }
+              },
+              y: {
+                title: { display: true, text: 'Hours Since Epoch' },
+                ticks: {
+                  callback: v => v.toFixed(1)
+                }
+              }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)} hours`
+                }
+              },
+              title: {
+                display: true,
+                text: 'Time Comparison (DST jump visible around March 9)'
+              }
+            }
+          }
+        });
+      };
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
